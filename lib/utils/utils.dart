@@ -18,12 +18,15 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path_package;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:rokwire_plugin/ui/panels/web_panel.dart';
 import 'package:timezone/timezone.dart' as timezone;
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 class StringUtils {
 
@@ -449,8 +452,48 @@ class UrlUtils {
     }
     return url;
   }
+
+  static Future<bool> canLaunchUrl(String url) async {
+    Uri? parsedUri = Uri.tryParse(url);
+    return (parsedUri != null) && (await url_launcher.canLaunchUrl(parsedUri));
+  }
+
+  ///
+  /// Launches urls based on the mode. 'context' must be specified if the mode is UrlLaunchMode.internalWebPanel
+  ///
+  /// returns true if the url is launched and false otherwise
+  ///
+  static void launchUrl({required String url, BuildContext? context, UrlLaunchMode? mode}) {
+    switch (mode) {
+      case UrlLaunchMode.internalWebPanel:
+        if (context != null) {
+          Navigator.push(context, CupertinoPageRoute(builder: (context) => WebPanel(url: url)));
+        }
+        break;
+      case UrlLaunchMode.internalInAppWebView:
+        _launchParsedUri(url, url_launcher.LaunchMode.inAppWebView);
+        break;
+      case UrlLaunchMode.externalApp:
+        _launchParsedUri(url, url_launcher.LaunchMode.externalApplication);
+        break;
+      case UrlLaunchMode.externalNonBrowserApp:
+        _launchParsedUri(url, url_launcher.LaunchMode.externalNonBrowserApplication);
+        break;
+      default:
+        _launchParsedUri(url, url_launcher.LaunchMode.platformDefault);
+        break;
+    }
+  }
+
+  static void _launchParsedUri(String url, url_launcher.LaunchMode launchMode) {
+    Uri? parsedUri = Uri.tryParse(url);
+    if (parsedUri != null) {
+      url_launcher.launchUrl(parsedUri, mode: launchMode);
+    }
+  }
 }
 
+enum UrlLaunchMode { internalWebPanel, internalInAppWebView, externalApp, externalNonBrowserApp, platformDefault }
 
 class JsonUtils {
 
